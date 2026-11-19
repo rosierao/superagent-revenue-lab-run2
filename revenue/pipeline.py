@@ -8,10 +8,15 @@ def load_events(path):
 
 
 def daily_revenue(events):
-    """Return one row per UTC day with total revenue in cents."""
-    days = events["occurred_at"].dt.strftime("%Y-%m-%d")
+    """Return one row per UTC day with total revenue in cents.
+
+    Payment webhooks may deliver the same event more than once, so events are
+    de-duplicated by their unique ``event_id`` before any totals are computed.
+    """
+    unique_events = events.drop_duplicates(subset=["event_id"], keep="first")
+    days = unique_events["occurred_at"].dt.strftime("%Y-%m-%d")
     report = (
-        events.assign(day=days)
+        unique_events.assign(day=days)
         .groupby("day", as_index=False)["amount_cents"]
         .sum()
         .rename(columns={"amount_cents": "revenue_cents"})

@@ -39,3 +39,14 @@ def test_replayed_event_is_counted_once():
     ])
     report = daily_revenue(events)
     assert report["revenue_cents"].tolist() == [4000]
+
+
+def test_replayed_event_received_on_a_later_day_is_counted_once():
+    # A webhook retry can arrive after midnight; the event still counts once
+    # on the day it occurred, not on the day it was received.
+    events = frame([
+        ("evt_retry", "ord_10", "2026-10-30T23:59:00Z", "2026-10-30T23:59:01Z", 3000),
+        ("evt_retry", "ord_10", "2026-10-30T23:59:00Z", "2026-10-31T00:05:00Z", 3000),
+    ])
+    report = daily_revenue(events)
+    assert dict(zip(report["day"], report["revenue_cents"])) == {"2026-10-30": 3000}
